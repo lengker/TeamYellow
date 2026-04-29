@@ -1,0 +1,107 @@
+1.先在 MySQL 中执行建表语句
+-- 创建ADS-B航迹数据表（A-1模块专用）
+CREATE TABLE IF NOT EXISTS adsb_track (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    icao VARCHAR(20) NOT NULL COMMENT '飞机唯一标识码',
+    lat DECIMAL(10,6) NOT NULL COMMENT '纬度',
+    lon DECIMAL(10,6) NOT NULL COMMENT '经度',
+    alt INT NOT NULL COMMENT '飞行高度',
+    speed INT NOT NULL COMMENT '飞行速度',
+    timestamp BIGINT NOT NULL COMMENT 'A-1模块绑定的接收时间戳'
+) COMMENT 'ADSB航迹数据表';
+
+
+2.完成基础写入
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+/**
+ * 功能：A-1航迹处理模块
+ * 1. 建立与 MySQL 数据库的连接
+ * 2. 实现ADSB航迹数据基础写入功能（含时间戳）
+ */
+public class DBConnection {
+    // 1. 数据库连接信息（根据自己的数据库修改）
+    private static final String driver = "com.mysql.cj.jdbc.Driver";
+    private static final String url = "jdbc:mysql://localhost:3306/你的数据库名?useSSL=false&serverTimezone=UTC";
+    private static final String username = "root";
+    private static final String password = "123456";
+
+    /**
+     * 【核心新增】ADSB航迹数据写入数据库方法
+     * @param conn 数据库连接对象
+     * @param icao 飞机标识码
+     * @param lat 纬度
+     * @param lon 经度
+     * @param alt 高度
+     * @param speed 速度
+     * @param timestamp A-1绑定的接收时间戳
+     * @throws SQLException 数据库异常
+     */
+    public static void insertADSBData(Connection conn, String icao, double lat, double lon,
+                                      int alt, int speed, long timestamp) throws SQLException {
+        // SQL插入语句（对应adsb_track表字段）
+        String sql = "INSERT INTO adsb_track(icao, lat, lon, alt, speed, timestamp) VALUES(?,?,?,?,?,?)";
+
+        // 预处理SQL，防止注入，项目标准写法
+        PreparedStatement pstmt = conn.prepareStatement(sql);
+        // 给SQL参数赋值
+        pstmt.setString(1, icao);
+        pstmt.setDouble(2, lat);
+        pstmt.setDouble(3, lon);
+        pstmt.setInt(4, alt);
+        pstmt.setInt(5, speed);
+        pstmt.setLong(6, timestamp);
+
+        // 执行插入
+        int rows = pstmt.executeUpdate();
+        System.out.println("✅ ADSB航迹数据写入成功，影响行数：" + rows);
+
+        // 关闭预处理对象
+        pstmt.close();
+    }
+
+    public static void main(String[] args) {
+        Connection conn = null;
+
+        try {
+            // 2. 加载驱动
+            Class.forName(driver);
+            // 3. 获取数据库连接
+            conn = DriverManager.getConnection(url, username, password);
+            System.out.println("✅ 数据库连接成功！");
+
+            // ===================== 【调用新增功能】写入航迹数据 =====================
+            // 模拟A-1模块接收的ADSB数据 + 绑定的时间戳
+            String icao = "A1B2C3";        // 飞机标识码
+            double lat = 30.123450;        // 纬度
+            double lon = 120.678900;       // 经度
+            int alt = 8000;                // 高度
+            int speed = 450;               // 速度
+            long timestamp = System.currentTimeMillis(); // A-1绑定的时间戳（和你JS代码逻辑一致）
+
+            // 写入数据库
+            insertADSBData(conn, icao, lat, lon, alt, speed, timestamp);
+            // ====================================================================
+
+        } catch (ClassNotFoundException e) {
+            System.out.println("❌ 驱动加载失败！");
+            e.printStackTrace();
+        } catch (SQLException e) {
+            System.out.println("❌ 数据库操作失败！");
+            e.printStackTrace();
+        } finally {
+            // 关闭连接
+            try {
+                if (conn != null) {
+                    conn.close();
+                    System.out.println("✅ 数据库连接已关闭");
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}

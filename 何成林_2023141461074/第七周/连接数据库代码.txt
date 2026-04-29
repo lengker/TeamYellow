@@ -1,0 +1,48 @@
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+/**
+ * 功能：建立与 MySQL 数据库的连接
+ */
+public class DBConnection {
+    public static void main(String[] args) {
+        // 1. 数据库连接信息（根据自己的数据库修改）
+        String driver = "com.mysql.cj.jdbc.Driver"; // MySQL 8.0+ 驱动类
+        String url = "jdbc:mysql://localhost:3306/你的数据库名?useSSL=false&serverTimezone=UTC";
+        String username = "root"; // 数据库账号
+        String password = "123456"; // 数据库密码
+
+        Connection conn = null; // 连接对象
+
+        try {
+            // 2. 加载驱动（MySQL 5.1.6 后可省略，但写上更规范）
+            Class.forName(driver);
+
+            // 3. 获取数据库连接（核心代码）
+            conn = DriverManager.getConnection(url, username, password);
+
+            // 4. 连接成功提示
+            System.out.println("数据库连接成功！");
+
+        } catch (ClassNotFoundException e) {
+            // 驱动找不到异常（没导入jar包或驱动名写错）
+            System.out.println("驱动加载失败！");
+            e.printStackTrace();
+        } catch (SQLException e) {
+            // 连接失败（地址、账号、密码、库名错误/网络不通）
+            System.out.println("数据库连接失败！");
+            e.printStackTrace();
+        } finally {
+            // 5. 关闭连接（必须做，防止资源泄漏）
+            try {
+                if (conn != null) {
+                    conn.close();
+                    System.out.println("数据库连接已关闭");
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
